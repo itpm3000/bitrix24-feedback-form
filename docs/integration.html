@@ -1,0 +1,417 @@
+<title>HelpDesk REST-интеграция</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  :root{
+    --ground:#f5f8fa; --surface:#ffffff; --surface-2:#eef3f7;
+    --ink:#14212c; --muted:#5a6b78; --faint:#8695a1;
+    --accent:#0092cc; --accent-strong:#006f9e; --accent-soft:#e2f2fa;
+    --warn:#9a6300; --warn-bg:#fdf3e0; --warn-border:#f0d49a;
+    --good:#1f7a4d; --good-bg:#e7f5ec;
+    --line:#dde6ec; --line-strong:#c6d3dc;
+    --code-bg:#f2f6f9; --code-ink:#0f2733;
+    --radius:12px;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:"IBM Plex Sans",-apple-system,Segoe UI,Roboto,sans-serif;
+    --display:"Bricolage Grotesque",var(--sans);
+  }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+    --ground:#0d151d; --surface:#141f29; --surface-2:#1b2833;
+    --ink:#e7eef4; --muted:#9db0bd; --faint:#748895;
+    --accent:#38bdf8; --accent-strong:#7dd3fc; --accent-soft:#12303f;
+    --warn:#e7b25c; --warn-bg:#2a2113; --warn-border:#4d3d1c;
+    --good:#66c48c; --good-bg:#132a1e;
+    --line:#25333f; --line-strong:#334451;
+    --code-bg:#0e1a23; --code-ink:#d6e6ef;
+  }}
+  :root[data-theme="dark"]{
+    --ground:#0d151d; --surface:#141f29; --surface-2:#1b2833;
+    --ink:#e7eef4; --muted:#9db0bd; --faint:#748895;
+    --accent:#38bdf8; --accent-strong:#7dd3fc; --accent-soft:#12303f;
+    --warn:#e7b25c; --warn-bg:#2a2113; --warn-border:#4d3d1c;
+    --good:#66c48c; --good-bg:#132a1e;
+    --line:#25333f; --line-strong:#334451;
+    --code-bg:#0e1a23; --code-ink:#d6e6ef;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--sans); font-size:16px; line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1140px; margin:0 auto; padding:0 24px;
+    display:grid; grid-template-columns:236px minmax(0,1fr); gap:48px}
+  @media (max-width:860px){ .wrap{grid-template-columns:1fr; gap:0} }
+
+  /* ── header ── */
+  header.top{grid-column:1/-1; border-bottom:1px solid var(--line); padding:52px 0 30px; margin-bottom:8px}
+  .eyebrow{font-family:var(--mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--accent-strong); margin:0 0 14px}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2rem,4.5vw,3rem);
+    line-height:1.04; letter-spacing:-.02em; text-wrap:balance; margin:0 0 14px}
+  .lede{font-size:1.12rem; color:var(--muted); max-width:60ch; margin:0 0 22px}
+  .meta{display:flex; flex-wrap:wrap; gap:8px}
+  .tag{font-family:var(--mono); font-size:12.5px; padding:5px 10px; border-radius:999px;
+    background:var(--surface); border:1px solid var(--line-strong); color:var(--muted)}
+  .tag b{color:var(--ink); font-weight:600}
+
+  /* ── nav ── */
+  nav.toc{position:sticky; top:0; align-self:start; height:100dvh; overflow-y:auto;
+    padding:52px 0; font-size:14px}
+  @media (max-width:860px){ nav.toc{position:static; height:auto; padding:24px 0; border-bottom:1px solid var(--line); margin-bottom:16px} }
+  nav.toc .lbl{font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--faint); margin:0 0 12px}
+  nav.toc ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px}
+  nav.toc a{display:block; color:var(--muted); text-decoration:none; padding:5px 12px;
+    border-left:2px solid var(--line); border-radius:0 6px 6px 0; transition:color .15s,border-color .15s,background .15s}
+  nav.toc a:hover{color:var(--ink); background:var(--surface-2)}
+  nav.toc a .n{font-family:var(--mono); color:var(--faint); font-size:12px; margin-right:8px}
+
+  main{padding:36px 0 96px; min-width:0}
+  section{margin:0 0 52px; scroll-margin-top:24px}
+  h2{font-family:var(--display); font-weight:700; font-size:1.62rem; letter-spacing:-.01em;
+    margin:0 0 6px; display:flex; align-items:baseline; gap:12px}
+  h2 .n{font-family:var(--mono); font-size:.92rem; font-weight:600; color:var(--accent);
+    border:1px solid var(--line-strong); border-radius:7px; padding:2px 8px; flex:none}
+  h3{font-family:var(--display); font-weight:600; font-size:1.16rem; margin:30px 0 10px}
+  .sub{color:var(--muted); margin:2px 0 22px}
+  p{margin:0 0 14px} a{color:var(--accent-strong)}
+  code{font-family:var(--mono); font-size:.86em; background:var(--code-bg);
+    padding:2px 6px; border-radius:6px; color:var(--code-ink); border:1px solid var(--line)}
+
+  /* ── endpoint card ── */
+  .ep{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    overflow:hidden; margin:0 0 8px}
+  .ep-bar{display:flex; align-items:center; gap:12px; padding:12px 16px;
+    background:var(--surface-2); border-bottom:1px solid var(--line); flex-wrap:wrap}
+  .verb{font-family:var(--mono); font-weight:600; font-size:12px; letter-spacing:.06em;
+    background:var(--accent); color:#fff; padding:4px 9px; border-radius:6px; flex:none}
+  :root[data-theme="dark"] .verb, :root:not([data-theme="light"]) .verb{color:#04121a}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .verb{color:#04121a}}
+  .ep-url{font-family:var(--mono); font-size:13.5px; color:var(--ink); word-break:break-all}
+  .ep-url .base{color:var(--faint)}
+
+  /* ── code block ── */
+  pre{margin:0; background:var(--code-bg); color:var(--code-ink);
+    font-family:var(--mono); font-size:13px; line-height:1.6; padding:16px 18px;
+    overflow-x:auto; border-top:0}
+  .ep pre{border-radius:0}
+  pre.solo{border:1px solid var(--line); border-radius:var(--radius)}
+  .tok-key{color:var(--accent-strong)} .tok-str{color:var(--good)}
+  .tok-num{color:#c26a1a} .tok-punc{color:var(--muted)} .tok-cmt{color:var(--faint)}
+  :root[data-theme="dark"] .tok-num, :root:not([data-theme="light"]) .tok-num{color:#e0a86a}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tok-num{color:#e0a86a}}
+
+  /* ── callout ── */
+  .note{border:1px solid var(--line); border-left:3px solid var(--accent);
+    background:var(--surface); border-radius:8px; padding:14px 16px; margin:0 0 16px; font-size:.96rem}
+  .note.warn{border-color:var(--warn-border); border-left-color:var(--warn); background:var(--warn-bg)}
+  .note.warn .k{color:var(--warn)}
+  .note .k{font-family:var(--mono); font-size:11.5px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--accent-strong); display:block; margin-bottom:5px; font-weight:600}
+  .note p:last-child{margin:0}
+
+  /* ── flow ── */
+  .flow{display:flex; align-items:stretch; gap:10px; flex-wrap:wrap; margin:6px 0 8px}
+  .flow .step{flex:1 1 150px; background:var(--surface); border:1px solid var(--line);
+    border-radius:10px; padding:14px 15px}
+  .flow .step .s{font-family:var(--mono); font-size:12px; color:var(--accent-strong); font-weight:600}
+  .flow .step .t{font-family:var(--display); font-weight:600; margin:4px 0 3px; font-size:1.02rem}
+  .flow .step .d{font-size:.86rem; color:var(--muted); line-height:1.45}
+
+  /* ── tables ── */
+  .tbl-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); margin:0 0 16px}
+  table{border-collapse:collapse; width:100%; font-size:14px; min-width:440px}
+  th,td{text-align:left; padding:10px 14px; border-bottom:1px solid var(--line); vertical-align:top}
+  thead th{background:var(--surface-2); font-family:var(--mono); font-weight:600; font-size:12px;
+    letter-spacing:.03em; text-transform:uppercase; color:var(--muted); position:sticky; top:0}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr:hover{background:var(--surface-2)}
+  td code{font-size:12.5px; white-space:nowrap}
+  td.id{font-family:var(--mono); color:var(--accent-strong); font-variant-numeric:tabular-nums; font-weight:600}
+  .cols2{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  @media (max-width:620px){ .cols2{grid-template-columns:1fr} }
+
+  footer{grid-column:1/-1; border-top:1px solid var(--line); padding:26px 0 60px;
+    color:var(--faint); font-size:13.5px; font-family:var(--mono)}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Bitrix24 · REST API</p>
+    <h1>Форма обратной связи → воронка HelpDesk</h1>
+    <p class="lede">Спецификация POST-запросов для приёма кастомной формы: создание
+      <b>Контакта</b> и <b>Сделки</b> (связанной с контактом) в CRM. Без привязки к языку —
+      подходит любому бэкенду.</p>
+    <div class="meta">
+      <span class="tag">scope: <b>crm</b></span>
+      <span class="tag">вход: <b>входящий вебхук</b></span>
+      <span class="tag">воронка: <b>HelpDesk · CATEGORY_ID=2</b></span>
+      <span class="tag">формат: <b>POST · JSON</b></span>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <p class="lbl">Разделы</p>
+    <ol>
+      <li><a href="#auth"><span class="n">1</span>Авторизация</a></li>
+      <li><a href="#flow"><span class="n">2</span>Логика</a></li>
+      <li><a href="#seq"><span class="n">3</span>Подход A — вызовы</a></li>
+      <li><a href="#batch"><span class="n">4</span>Подход B — batch</a></li>
+      <li><a href="#fields"><span class="n">5</span>Справочник полей</a></li>
+      <li><a href="#errors"><span class="n">6</span>Ошибки и лимиты</a></li>
+      <li><a href="#steps"><span class="n">7</span>Порядок реализации</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="auth">
+      <h2><span class="n">1</span>Авторизация и формат вызова</h2>
+      <p class="sub">Все обращения к порталу идут <b>с сервера</b> (бэкенд-прокси). URL вебхука — секрет,
+        в клиентском коде его быть не должно: браузерная форма шлёт данные на ваш бэкенд, а он — в Bitrix24.</p>
+      <pre class="solo"><span class="tok-cmt">BASE</span> = https://&lt;portal&gt;.bitrix24.ru/rest/&lt;user_id&gt;/&lt;webhook_token&gt;/</pre>
+      <div class="cols2" style="margin-top:16px">
+        <div class="note"><span class="k">Вызов метода</span>
+          <p><code>POST {BASE}&lt;method&gt;.json</code>, заголовок <code>Content-Type: application/json</code>,
+          тело — JSON с параметрами метода.</p></div>
+        <div class="note"><span class="k">Обязательно</span>
+          <p>Непустой заголовок <code>User-Agent</code> — портал режет запросы без него.
+          Успех — поле <code>result</code>; ошибка — <code>error</code> + <code>error_description</code>.</p></div>
+      </div>
+    </section>
+
+    <section id="flow">
+      <h2><span class="n">2</span>Логика в трёх шагах</h2>
+      <p class="sub">Антидубль контактов встроен: повторная отправка того же email/телефона не плодит контакты.</p>
+      <div class="flow">
+        <div class="step"><div class="s">01</div><div class="t">Поиск дубля</div>
+          <div class="d">по email и телефону среди контактов</div></div>
+        <div class="step"><div class="s">02</div><div class="t">Контакт</div>
+          <div class="d">создать, только если дубль не найден</div></div>
+        <div class="step"><div class="s">03</div><div class="t">Сделка</div>
+          <div class="d">создать с <code>CONTACT_ID</code> — новым или найденным</div></div>
+      </div>
+      <p>Ниже два эквивалентных способа. <b>Подход A</b> проще в реализации (обычные последовательные
+        вызовы). <b>Подход B</b> — оптимизация через <code>batch</code> (меньше запросов, важно на объёмах).</p>
+    </section>
+
+    <section id="seq">
+      <h2><span class="n">3</span>Подход A — последовательные вызовы</h2>
+      <p class="sub">Рекомендуется по умолчанию: прозрачно и легко отлаживать.</p>
+
+      <h3>Шаг 1 · Поиск дубля контакта</h3>
+      <p>Вызвать по каждому заполненному каналу связи.</p>
+      <div class="ep">
+        <div class="ep-bar"><span class="verb">POST</span>
+          <span class="ep-url"><span class="base">{BASE}</span>crm.duplicate.findbycomm.json</span></div>
+        <pre><span class="tok-punc">{</span> <span class="tok-key">"entity_type"</span>: <span class="tok-str">"CONTACT"</span>, <span class="tok-key">"type"</span>: <span class="tok-str">"EMAIL"</span>, <span class="tok-key">"values"</span>: <span class="tok-punc">[</span><span class="tok-str">"ivan@example.com"</span><span class="tok-punc">] }</span>
+<span class="tok-cmt">// и/или</span>
+<span class="tok-punc">{</span> <span class="tok-key">"entity_type"</span>: <span class="tok-str">"CONTACT"</span>, <span class="tok-key">"type"</span>: <span class="tok-str">"PHONE"</span>, <span class="tok-key">"values"</span>: <span class="tok-punc">[</span><span class="tok-str">"+79001234567"</span><span class="tok-punc">] }</span></pre>
+      </div>
+      <p>Ответ при совпадении: <code>{ "result": { "CONTACT": [16] } }</code> — берём первый ID.
+        Пустой массив / нет поля — дубля нет.</p>
+
+      <h3>Шаг 2 · Создание контакта <span style="color:var(--faint);font-weight:400;font-size:.9rem">(только если дубля нет)</span></h3>
+      <div class="ep">
+        <div class="ep-bar"><span class="verb">POST</span>
+          <span class="ep-url"><span class="base">{BASE}</span>crm.contact.add.json</span></div>
+        <pre><span class="tok-punc">{</span>
+  <span class="tok-key">"fields"</span>: <span class="tok-punc">{</span>
+    <span class="tok-key">"NAME"</span>: <span class="tok-str">"Иван"</span>,
+    <span class="tok-key">"LAST_NAME"</span>: <span class="tok-str">"Петров"</span>,
+    <span class="tok-key">"OPENED"</span>: <span class="tok-str">"Y"</span>,
+    <span class="tok-key">"TYPE_ID"</span>: <span class="tok-str">"CLIENT"</span>,
+    <span class="tok-key">"SOURCE_ID"</span>: <span class="tok-str">"WEB"</span>,
+    <span class="tok-key">"EMAIL"</span>: <span class="tok-punc">[{</span> <span class="tok-key">"VALUE"</span>: <span class="tok-str">"ivan@example.com"</span>, <span class="tok-key">"VALUE_TYPE"</span>: <span class="tok-str">"WORK"</span> <span class="tok-punc">}]</span>,
+    <span class="tok-key">"PHONE"</span>: <span class="tok-punc">[{</span> <span class="tok-key">"VALUE"</span>: <span class="tok-str">"+79001234567"</span>, <span class="tok-key">"VALUE_TYPE"</span>: <span class="tok-str">"WORK"</span> <span class="tok-punc">}]</span>,
+    <span class="tok-key">"UF_CRM_1786546554"</span>: <span class="tok-str">"user-42"</span>
+  <span class="tok-punc">}</span>
+<span class="tok-punc">}</span></pre>
+      </div>
+      <p>Ответ: <code>{ "result": 123 }</code> — ID нового контакта.</p>
+      <div class="note"><span class="k">Множественные поля</span>
+        <p><code>EMAIL</code> и <code>PHONE</code> передаются <b>массивом объектов</b>
+        <code>{VALUE, VALUE_TYPE}</code>, а не строкой. <code>VALUE_TYPE</code>: <code>WORK</code> ·
+        <code>MOBILE</code> · <code>HOME</code> · <code>OTHER</code>.</p></div>
+
+      <h3>Шаг 3 · Создание сделки</h3>
+      <div class="ep">
+        <div class="ep-bar"><span class="verb">POST</span>
+          <span class="ep-url"><span class="base">{BASE}</span>crm.deal.add.json</span></div>
+        <pre><span class="tok-punc">{</span>
+  <span class="tok-key">"fields"</span>: <span class="tok-punc">{</span>
+    <span class="tok-key">"TITLE"</span>: <span class="tok-str">"Обращение с сайта site-a.com — Иван Петров"</span>,
+    <span class="tok-key">"CATEGORY_ID"</span>: <span class="tok-num">2</span>,
+    <span class="tok-key">"STAGE_ID"</span>: <span class="tok-str">"C2:NEW"</span>,
+    <span class="tok-key">"CONTACT_ID"</span>: <span class="tok-num">123</span>,
+    <span class="tok-key">"SOURCE_ID"</span>: <span class="tok-str">"WEB"</span>,
+    <span class="tok-key">"SOURCE_DESCRIPTION"</span>: <span class="tok-str">"site-a.com | https://site-a.com/contacts"</span>,
+    <span class="tok-key">"COMMENTS"</span>: <span class="tok-str">"Текст обращения + сводка по источнику"</span>,
+    <span class="tok-key">"UF_CRM_1786700225371"</span>: <span class="tok-str">"Не проходит платёж по QR"</span>,
+    <span class="tok-key">"UF_CRM_1786685648580"</span>: <span class="tok-num">188</span>,
+    <span class="tok-key">"UF_CRM_1786685952807"</span>: <span class="tok-num">158</span>,
+    <span class="tok-key">"UTM_SOURCE"</span>: <span class="tok-str">"google"</span>, <span class="tok-key">"UTM_MEDIUM"</span>: <span class="tok-str">"cpc"</span>, <span class="tok-key">"UTM_CAMPAIGN"</span>: <span class="tok-str">"helpdesk"</span>
+  <span class="tok-punc">}</span>
+<span class="tok-punc">}</span></pre>
+      </div>
+      <p>Ответ: <code>{ "result": 4567 }</code> — ID сделки. Поле <code>CONTACT_ID</code> связывает сделку
+        с контактом. Если контакт найден на Шаге 1 — Шаг 2 пропускается, а сюда идёт найденный ID.</p>
+    </section>
+
+    <section id="batch">
+      <h2><span class="n">4</span>Подход B — batch (одним запросом)</h2>
+      <p class="sub">Метод <code>batch</code> выполняет до 50 команд за один HTTP-запрос и подставляет
+        результат предыдущей команды в следующую через <code>$result[&lt;ключ&gt;]</code>.</p>
+
+      <div class="note warn"><span class="k">Грабли · формат команд</span>
+        <p>Сырой endpoint <code>batch</code> принимает команды <b>строками</b> вида
+        <code>"&lt;method&gt;?&lt;url-encoded-параметры&gt;"</code>. Форму
+        <code>{ method, params }</code> он <b>молча игнорирует</b> — вернётся пустой <code>result</code>.
+        Объекты понимают только клиентские библиотеки (<code>CRest::callBatch</code>,
+        <code>BX24.callBatch</code>), которые сами конвертируют их в строки.</p></div>
+
+      <div class="ep">
+        <div class="ep-bar"><span class="verb">POST</span>
+          <span class="ep-url"><span class="base">{BASE}</span>batch.json</span></div>
+        <pre><span class="tok-punc">{</span>
+  <span class="tok-key">"halt"</span>: <span class="tok-num">1</span>,
+  <span class="tok-key">"cmd"</span>: <span class="tok-punc">{</span>
+    <span class="tok-key">"contact"</span>: <span class="tok-str">"crm.contact.add?fields[NAME]=Иван&fields[EMAIL][0][VALUE]=ivan%40example.com&fields[EMAIL][0][VALUE_TYPE]=WORK"</span>,
+    <span class="tok-key">"deal"</span>: <span class="tok-str">"crm.deal.add?fields[TITLE]=Обращение&fields[CATEGORY_ID]=2&fields[STAGE_ID]=C2:NEW&fields[CONTACT_ID]=$result[contact]"</span>
+  <span class="tok-punc">}</span>
+<span class="tok-punc">}</span></pre>
+      </div>
+      <p><code>halt:1</code> — остановить пакет при первой ошибке. <code>fields[CONTACT_ID]=$result[contact]</code>
+        подставит ID контакта из команды <code>contact</code>. В ответе: <code>result.result.contact</code>,
+        <code>result.result.deal</code>; ошибки по командам — в <code>result.result_error.&lt;ключ&gt;</code>.</p>
+
+      <div class="note warn"><span class="k">Грабли · нет транзакции</span>
+        <p><code>batch</code> <b>не транзакционный</b>: если контакт создан, а сделка упала, контакт
+        <b>не откатывается</b>. Чтобы не плодить «висячие» контакты — при наличии
+        <code>result.result.contact</code> и отсутствии <code>result.result.deal</code> удалить контакт:
+        <code>POST {BASE}crm.contact.delete.json</code> с телом <code>{ "id": &lt;contactId&gt; }</code>.</p></div>
+    </section>
+
+    <section id="fields">
+      <h2><span class="n">5</span>Справочник полей</h2>
+      <p class="sub">Коды полей и ID значений сверены с живым порталом. При правках карточки они могут
+        измениться — актуальные значения всегда отдают <code>crm.deal.fields</code> и <code>crm.contact.fields</code>.</p>
+
+      <h3>Фиксированные значения (воронка HelpDesk)</h3>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Поле сделки</th><th>Значение</th><th>Смысл</th></tr></thead>
+        <tbody>
+          <tr><td><code>CATEGORY_ID</code></td><td class="id">2</td><td>воронка HelpDesk</td></tr>
+          <tr><td><code>STAGE_ID</code></td><td><code>C2:NEW</code></td><td>стартовая стадия «Новая»</td></tr>
+          <tr><td><code>SOURCE_ID</code></td><td><code>WEB</code></td><td>источник «Веб-сайт»</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Поля контакта</h3>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Поле</th><th>Тип</th><th>Назначение</th></tr></thead>
+        <tbody>
+          <tr><td><code>NAME</code></td><td>строка</td><td>имя</td></tr>
+          <tr><td><code>LAST_NAME</code></td><td>строка</td><td>фамилия</td></tr>
+          <tr><td><code>SECOND_NAME</code></td><td>строка</td><td>отчество</td></tr>
+          <tr><td><code>EMAIL</code></td><td>множ. <code>[{VALUE,VALUE_TYPE}]</code></td><td>email</td></tr>
+          <tr><td><code>PHONE</code></td><td>множ. <code>[{VALUE,VALUE_TYPE}]</code></td><td>телефон</td></tr>
+          <tr><td><code>UF_CRM_1786546554</code></td><td>строка</td><td>ID пользователя на сайте обращения</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Поля сделки HelpDesk</h3>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Код</th><th>Тип</th><th>Назначение</th></tr></thead>
+        <tbody>
+          <tr><td><code>UF_CRM_1786700225371</code></td><td>строка</td><td>Описание проблемы</td></tr>
+          <tr><td><code>UF_CRM_1786685648580</code></td><td>список</td><td>Категория обращения</td></tr>
+          <tr><td><code>UF_CRM_1786685952807</code></td><td>список</td><td>Приоритет</td></tr>
+          <tr><td><code>UF_CRM_1786686105228</code></td><td>список</td><td>Способ оплаты</td></tr>
+          <tr><td><code>UF_CRM_1786686034932</code></td><td>строка</td><td>Client / User ID</td></tr>
+          <tr><td><code>UF_CRM_1786686054889</code></td><td>строка</td><td>Order ID</td></tr>
+          <tr><td><code>UF_CRM_1786686076193</code></td><td>строка</td><td>Transaction ID</td></tr>
+        </tbody>
+      </table></div>
+      <p>Стандартные текстовые: <code>TITLE</code>, <code>COMMENTS</code>, <code>SOURCE_DESCRIPTION</code>;
+        UTM — <code>UTM_SOURCE</code>, <code>UTM_MEDIUM</code>, <code>UTM_CAMPAIGN</code>,
+        <code>UTM_CONTENT</code>, <code>UTM_TERM</code>.</p>
+
+      <h3>Значения списков <span style="color:var(--faint);font-weight:400;font-size:.9rem">(передавать числовой ID)</span></h3>
+      <div class="cols2">
+        <div>
+          <p style="font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-bottom:8px">Категория · UF_CRM_1786685648580</p>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>ID</th><th>Значение</th></tr></thead>
+            <tbody>
+              <tr><td class="id">150</td><td>Платеж</td></tr>
+              <tr><td class="id">152</td><td>KYC / Верификация</td></tr>
+              <tr><td class="id">184</td><td>AML / Комплаенс</td></tr>
+              <tr><td class="id">186</td><td>Мошенничество / Риск</td></tr>
+              <tr><td class="id">188</td><td>Техническая проблема</td></tr>
+              <tr><td class="id">190</td><td>Аккаунт</td></tr>
+              <tr><td class="id">192</td><td>Возврат средств</td></tr>
+              <tr><td class="id">194</td><td>Расчёты / Финансы</td></tr>
+              <tr><td class="id">196</td><td>Общий вопрос</td></tr>
+              <tr><td class="id">198</td><td>Жалоба</td></tr>
+              <tr><td class="id">200</td><td>Другое</td></tr>
+            </tbody>
+          </table></div>
+        </div>
+        <div>
+          <p style="font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-bottom:8px">Приоритет · UF_CRM_1786685952807</p>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>ID</th><th>Значение</th></tr></thead>
+            <tbody>
+              <tr><td class="id">154</td><td>критическая</td></tr>
+              <tr><td class="id">156</td><td>важная</td></tr>
+              <tr><td class="id">158</td><td>стандартная</td></tr>
+              <tr><td class="id">160</td><td>может подождать</td></tr>
+            </tbody>
+          </table></div>
+          <p style="font-family:var(--mono);font-size:12.5px;color:var(--muted);margin:18px 0 8px">Способ оплаты · UF_CRM_1786686105228</p>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>ID</th><th>Значение</th></tr></thead>
+            <tbody>
+              <tr><td class="id">162</td><td>QR</td></tr>
+              <tr><td class="id">164</td><td>Cards</td></tr>
+            </tbody>
+          </table></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="errors">
+      <h2><span class="n">6</span>Ошибки и лимиты</h2>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Ситуация</th><th>Признак</th><th>Что делать</th></tr></thead>
+        <tbody>
+          <tr><td>Нет права</td><td><code>insufficient_scope</code></td><td>выдать вебхуку scope <code>crm</code></td></tr>
+          <tr><td>Лимит интенсивности</td><td><code>QUERY_LIMIT_EXCEEDED</code> · HTTP 503</td><td>ретрай с паузой; ведро 50 запросов, слив 2/сек <b>на портал</b> (Enterprise — 250 / 5)</td></tr>
+          <tr><td>Лимит по времени</td><td><code>OPERATION_TIME_LIMIT</code> · HTTP 429</td><td>ретрай; считается на вебхук, обычной формой недостижим</td></tr>
+          <tr><td>Всплеск запросов</td><td>«голый» <code>nginx 403</code> (HTML)</td><td>временный бан IP на периметре — не слать десятки запросов в секунду; спадает за минуты</td></tr>
+          <tr><td>Пустой <code>User-Agent</code></td><td>HTTP 403 на входе</td><td>всегда задавать непустой UA</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="steps">
+      <h2><span class="n">7</span>Порядок реализации на бэкенде</h2>
+      <div class="flow" style="flex-direction:column">
+        <div class="step"><div class="s">01 · Приём</div><div class="d">принять POST формы, провалидировать email/телефон и обязательные поля</div></div>
+        <div class="step"><div class="s">02 · Источник</div><div class="d">снять на клиенте домен, URL страницы, <code>referrer</code>, <code>utm_*</code> и передать на бэкенд</div></div>
+        <div class="step"><div class="s">03 · Дубль</div><div class="d">поиск существующего контакта по email и телефону</div></div>
+        <div class="step"><div class="s">04 · Создание</div><div class="d">контакт (если нужно) + сделка с <code>CONTACT_ID</code> в воронке HelpDesk</div></div>
+        <div class="step"><div class="s">05 · Ответ</div><div class="d">вернуть форме ID сделки/контакта или текст ошибки</div></div>
+      </div>
+      <p style="margin-top:16px">Референс-реализация на PHP и пример формы — в файлах <code>b24-submit.php</code>
+        и <code>test-form.html</code> репозитория.</p>
+    </section>
+
+    <footer>Bitrix24 HelpDesk · REST-интеграция формы обратной связи · внутренний технический документ</footer>
+  </main>
+</div>

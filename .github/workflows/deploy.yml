@@ -41,4 +41,5 @@ jobs:
             --exclude='*.zip' \
             --exclude='.gitignore' \
             --exclude='config.php' \
+            --exclude='config.local.php' \
             ./ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.TARGET_PATH }}"
