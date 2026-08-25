@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Тест формы → Bitrix24 HelpDesk</title>
+<style>
+  :root { --bg:#f4f6f9; --card:#fff; --line:#e2e6ee; --brand:#00aeef; --txt:#1a2030; --muted:#6b7280; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--txt); }
+  .wrap { max-width:560px; margin:32px auto; padding:0 16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:24px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  p.sub { color:var(--muted); margin:0 0 20px; font-size:14px; }
+  label { display:block; font-size:13px; font-weight:600; margin:14px 0 6px; }
+  input, select, textarea { width:100%; padding:10px 12px; border:1px solid var(--line);
+    border-radius:9px; font-size:14px; background:#fff; color:var(--txt); }
+  input:focus, select:focus, textarea:focus { outline:2px solid var(--brand); border-color:var(--brand); }
+  textarea { min-height:84px; resize:vertical; }
+  .row { display:flex; gap:12px; } .row > div { flex:1; }
+  button { margin-top:20px; width:100%; padding:12px; border:0; border-radius:10px;
+    background:var(--brand); color:#fff; font-size:15px; font-weight:600; cursor:pointer; }
+  button:disabled { opacity:.6; cursor:default; }
+  .msg { margin-top:16px; padding:12px 14px; border-radius:9px; font-size:14px; display:none; }
+  .msg.ok  { display:block; background:#e7f8ee; border:1px solid #7bd5a0; color:#136c3a; }
+  .msg.err { display:block; background:#fdecec; border:1px solid #f0a0a0; color:#a11; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>Форма обратной связи (тест)</h1>
+    <p class="sub">Создаёт контакт + сделку в воронке HelpDesk. Проверка дублей контакта включена.</p>
+
+    <form id="f">
+      <div class="row">
+        <div><label>Имя</label><input name="name" value="Иван"></div>
+        <div><label>Фамилия</label><input name="last_name" value="Тестов"></div>
+      </div>
+      <div class="row">
+        <div><label>Email</label><input name="email" type="email" value="ivan.test@example.com"></div>
+        <div><label>Телефон</label><input name="phone" value="+79001234567"></div>
+      </div>
+
+      <label>ID пользователя на сайте</label>
+      <input name="site_user_id" value="user-42">
+
+      <label>Категория обращения</label>
+      <select name="category">
+        <option value="">— не выбрано —</option>
+        <option value="150">Платеж</option>
+        <option value="152">KYC / Верификация</option>
+        <option value="184">AML / Комплаенс</option>
+        <option value="186">Мошенничество / Риск</option>
+        <option value="188" selected>Техническая проблема</option>
+        <option value="190">Аккаунт</option>
+        <option value="192">Возврат средств</option>
+        <option value="194">Расчёты / Финансы</option>
+        <option value="196">Общий вопрос</option>
+        <option value="198">Жалоба</option>
+        <option value="200">Другое</option>
+      </select>
+
+      <div class="row">
+        <div>
+          <label>Приоритет</label>
+          <select name="priority">
+            <option value="154">критическая</option>
+            <option value="156">важная</option>
+            <option value="158" selected>стандартная</option>
+            <option value="160">может подождать</option>
+          </select>
+        </div>
+        <div>
+          <label>Способ оплаты</label>
+          <select name="payment_method">
+            <option value="">— не выбрано —</option>
+            <option value="162">QR</option>
+            <option value="164">Cards</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div><label>Order ID</label><input name="order_id" value="ORD-1001"></div>
+        <div><label>Transaction ID</label><input name="transaction_id" value="TX-55501"></div>
+      </div>
+
+      <label>Описание проблемы</label>
+      <textarea name="message">Не проходит платёж по QR, зависает на этапе подтверждения.</textarea>
+
+      <input type="hidden" name="site" value="test-site.local">
+
+      <button type="submit" id="btn">Отправить обращение</button>
+    </form>
+
+    <div id="out" class="msg"></div>
+  </div>
+</div>
+
+<script>
+// URL вашего PHP-прокси. Если форма и b24-submit.php в одной папке — оставьте как есть.
+const ENDPOINT = 'b24-submit.php';
+
+const form = document.getElementById('f');
+const out  = document.getElementById('out');
+const btn  = document.getElementById('btn');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  out.className = 'msg'; out.textContent = '';
+  btn.disabled = true; btn.textContent = 'Отправка…';
+
+  const data = Object.fromEntries(new FormData(form).entries());
+  try {
+    const r = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const j = await r.json();
+    if (j.ok) {
+      out.className = 'msg ok';
+      out.textContent = `Готово! Сделка #${j.deal_id}, контакт #${j.contact_id} `
+        + (j.contact_created ? '(создан новый)' : '(найден существующий — дубль не создан)');
+    } else {
+      out.className = 'msg err';
+      out.textContent = 'Ошибка: ' + (j.error || 'неизвестно');
+    }
+  } catch (err) {
+    out.className = 'msg err';
+    out.textContent = 'Сеть/сервер недоступен: ' + err.message;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Отправить обращение';
+  }
+});
+</script>
+</body>
+</html>
