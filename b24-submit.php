@@ -56,6 +56,15 @@ $siteUser  = trim((string)($in['site_user_id'] ?? '')); // UF контакта: 
 $site      = trim((string)($in['site']       ?? ''));   // домен сайта-источника
 $message   = trim((string)($in['message']    ?? ''));
 
+// ── Источник обращения ──
+$pageUrl   = trim((string)($in['page_url']  ?? '')); // точный URL страницы с формой
+$referrer  = trim((string)($in['referrer']  ?? '')); // откуда пользователь пришёл
+$utm = [];
+foreach (['utm_source','utm_medium','utm_campaign','utm_content','utm_term'] as $k) {
+    $v = trim((string)($in[$k] ?? ''));
+    if ($v !== '') { $utm[strtoupper($k)] = $v; } // UTM_SOURCE, UTM_MEDIUM, ... — штатные поля сделки
+}
+
 // Поля сделки HelpDesk (значения enum — числовые ID, см. справочник)
 $category  = $in['category']       ?? null; // UF_CRM_1786685648580
 $priority  = $in['priority']       ?? null; // UF_CRM_1786685952807
@@ -85,6 +94,20 @@ $contactFields = array_filter([
 if ($email !== '') { $contactFields['EMAIL'] = [['VALUE' => $email, 'VALUE_TYPE' => 'WORK']]; }
 if ($phone !== '') { $contactFields['PHONE'] = [['VALUE' => $phone, 'VALUE_TYPE' => 'WORK']]; }
 
+// ── Источник: короткая строка для SOURCE_DESCRIPTION и подробный блок в комментарий ──
+$sourceShort = trim(implode(' | ', array_filter([$site, $pageUrl]))); // компактно для поля «Источник»
+
+$srcLines = array_filter([
+    $site      ? "Сайт: $site"            : '',
+    $pageUrl   ? "Страница: $pageUrl"     : '',
+    $referrer  ? "Реферер: $referrer"     : '',
+    $utm       ? 'UTM: ' . implode(', ', array_map(fn($k, $v) => "$k=$v", array_keys($utm), $utm)) : '',
+]);
+$sourceBlock = $srcLines ? "── Источник обращения ──\n" . implode("\n", $srcLines) : '';
+
+// COMMENTS = текст обращения + блок источника (для контекста менеджеру)
+$comments = trim($message . ($sourceBlock ? ($message ? "\n\n" : '') . $sourceBlock : ''));
+
 // ── Поля сделки ──
 $title = 'Обращение' . ($site ? " с сайта $site" : '')
        . (($name || $lastName) ? ' — ' . trim("$name $lastName") : '');
@@ -93,16 +116,16 @@ $dealFields = array_filter([
     'CATEGORY_ID'        => HELPDESK_CATEGORY_ID,
     'STAGE_ID'           => HELPDESK_STAGE_NEW,
     'SOURCE_ID'          => DEAL_SOURCE_ID,
-    'SOURCE_DESCRIPTION' => $site,
-    'COMMENTS'           => $message,
+    'SOURCE_DESCRIPTION' => $sourceShort,
+    'COMMENTS'           => $comments,
     'UF_CRM_1786685648580' => $category,   // Категория
     'UF_CRM_1786685952807' => $priority,   // Приоритет
     'UF_CRM_1786686105228' => $payMethod,  // Payment Method
     'UF_CRM_1786686034932' => $clientId,   // Client/User ID
     'UF_CRM_1786686054889' => $orderId,    // Order ID
     'UF_CRM_1786686076193' => $txId,       // Transaction ID
-    'UF_CRM_1786700225371' => $message,    // Описание проблемы
-], fn($v) => $v !== '' && $v !== null);
+    'UF_CRM_1786700225371' => $message,    // Описание проблемы (только текст обращения)
+], fn($v) => $v !== '' && $v !== null) + $utm; // + штатные UTM_SOURCE/MEDIUM/CAMPAIGN/CONTENT/TERM
 
 // ── Шаг 2. Создание ──
 if ($existingContactId) {

@@ -112,6 +112,15 @@ form.addEventListener('submit', async (e) => {
   btn.disabled = true; btn.textContent = 'Отправка…';
 
   const data = Object.fromEntries(new FormData(form).entries());
+
+  // ── Автосбор источника ──
+  const q = new URLSearchParams(location.search);
+  data.site      = data.site || location.hostname;      // домен сайта (перебивает hidden, если пусто)
+  data.page_url  = location.href;                        // точный URL страницы с формой
+  data.referrer  = document.referrer || '';             // откуда пришёл пользователь
+  ['utm_source','utm_medium','utm_campaign','utm_content','utm_term']
+    .forEach(k => { const v = q.get(k); if (v) data[k] = v; }); // UTM из адресной строки
+
   try {
     const r = await fetch(ENDPOINT, {
       method: 'POST',
