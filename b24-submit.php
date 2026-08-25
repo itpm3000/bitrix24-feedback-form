@@ -227,6 +227,8 @@ function b24(string $method, array $params): array {
             CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => 30,
+            CURLOPT_FOLLOWLOCATION => true, // портал может редиректить на региональный домен
+            CURLOPT_USERAGENT      => 'b24-feedback-form/1.0',
         ]);
         $body = curl_exec($ch);
         $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -237,7 +239,14 @@ function b24(string $method, array $params): array {
             continue;
         }
         $data = json_decode((string)$body, true);
-        return is_array($data) ? $data : ['error' => 'BAD_RESPONSE', 'error_description' => "HTTP $code"];
+        if (is_array($data)) { return $data; }
+        // Не-JSON ответ (например HTML-страница WAF/Cloudflare) — вернём тело для диагностики.
+        return [
+            'error'             => 'BAD_RESPONSE',
+            'error_description' => "HTTP $code (ответ не JSON)",
+            'http_code'         => $code,
+            'raw_body'          => mb_substr((string)$body, 0, 1000),
+        ];
     }
     return ['error' => 'RATE_LIMIT', 'error_description' => 'Превышен лимит запросов'];
 }
