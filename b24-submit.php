@@ -118,11 +118,13 @@ if ($existingContactId) {
 }
 
 // Контакта нет — создаём контакт + сделку одним пакетом (halt=1).
+// Команды batch передаём СТРОКАМИ (сырой endpoint не понимает форму {method,params}).
+// Ссылку на результат $result[contact] дописываем литералом, без URL-кодирования.
 $batch = b24('batch', [
     'halt' => 1,
     'cmd'  => [
-        'contact' => ['method' => 'crm.contact.add', 'params' => ['fields' => $contactFields]],
-        'deal'    => ['method' => 'crm.deal.add',    'params' => ['fields' => $dealFields + ['CONTACT_ID' => '$result[contact]']]],
+        'contact' => cmdStr('crm.contact.add', ['fields' => $contactFields]),
+        'deal'    => cmdStr('crm.deal.add',    ['fields' => $dealFields]) . '&fields[CONTACT_ID]=$result[contact]',
     ],
 ]);
 
@@ -165,12 +167,12 @@ ok([
 function findDuplicateContact(string $email, string $phone): ?int {
     $cmd = [];
     if ($email !== '') {
-        $cmd['byEmail'] = ['method' => 'crm.duplicate.findbycomm',
-            'params' => ['entity_type' => 'CONTACT', 'type' => 'EMAIL', 'values' => [$email]]];
+        $cmd['byEmail'] = cmdStr('crm.duplicate.findbycomm',
+            ['entity_type' => 'CONTACT', 'type' => 'EMAIL', 'values' => [$email]]);
     }
     if ($phone !== '') {
-        $cmd['byPhone'] = ['method' => 'crm.duplicate.findbycomm',
-            'params' => ['entity_type' => 'CONTACT', 'type' => 'PHONE', 'values' => [$phone]]];
+        $cmd['byPhone'] = cmdStr('crm.duplicate.findbycomm',
+            ['entity_type' => 'CONTACT', 'type' => 'PHONE', 'values' => [$phone]]);
     }
     if (!$cmd) { return null; }
 
@@ -184,6 +186,11 @@ function findDuplicateContact(string $email, string $phone): ?int {
         if (!empty($ids)) { return (int)$ids[0]; }
     }
     return null;
+}
+
+/** Строковая команда для batch: "method?fields[NAME]=...&fields[EMAIL][0][VALUE]=...". */
+function cmdStr(string $method, array $params): string {
+    return $method . '?' . http_build_query($params);
 }
 
 /** Один REST-вызов с ретраем на лимиты (503 QUERY_LIMIT_EXCEEDED / 429 OPERATION_TIME_LIMIT). */
