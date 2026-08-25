@@ -126,6 +126,12 @@ form.addEventListener('submit', async (e) => {
     } else {
       out.className = 'msg err';
       out.textContent = 'Ошибка: ' + (j.error || 'неизвестно');
+      if (j.debug) {
+        const pre = document.createElement('pre');
+        pre.style.cssText = 'margin-top:10px;white-space:pre-wrap;font-size:12px;max-height:220px;overflow:auto';
+        pre.textContent = JSON.stringify(j.debug, null, 2);
+        out.appendChild(pre);
+      }
     }
   } catch (err) {
     out.className = 'msg err';

@@ -14,9 +14,14 @@
  */
 
 // ─────────────────────────────  НАСТРОЙКИ  ─────────────────────────────
-// Входящий вебхук с правом scope=crm. Пример:
-//   https://your-portal.bitrix24.ru/rest/1/xxxxxxxxxxxxxxxx/
-const WEBHOOK = 'https://your-portal.bitrix24.ru/rest/1/PUT_YOUR_TOKEN_HERE/';
+// Секрет (URL вебхука) лежит в config.local.php — он в .gitignore и НЕ коммитится.
+// Скопируйте config.local.php.example → config.local.php и впишите свой вебхук.
+$cfg = __DIR__ . '/config.local.php';
+if (!is_file($cfg)) {
+    http_response_code(500);
+    exit(json_encode(['ok' => false, 'error' => 'Нет config.local.php — скопируйте из config.local.php.example и впишите вебхук'], JSON_UNESCAPED_UNICODE));
+}
+require $cfg; // определяет константу WEBHOOK
 
 const HELPDESK_CATEGORY_ID = 2;        // воронка HelpDesk
 const HELPDESK_STAGE_NEW   = 'C2:NEW'; // стартовая стадия «Новая»
@@ -24,6 +29,9 @@ const DEAL_SOURCE_ID       = 'WEB';    // источник
 
 // CORS: укажите домены ваших сайтов (или '*' только на время теста).
 const ALLOWED_ORIGIN = '*';
+
+// На время отладки true — в ответ добавляется сырой ответ Битрикс. На проде — false.
+const DEBUG = true;
 // ───────────────────────────────────────────────────────────────────────
 
 header('Content-Type: application/json; charset=utf-8');
@@ -118,6 +126,11 @@ $batch = b24('batch', [
     ],
 ]);
 
+// Ошибка верхнего уровня самого batch (нет прав, битый токен, неверный запрос и т.п.)
+if (isset($batch['error'])) {
+    fail('Batch отклонён Битриксом: ' . ($batch['error_description'] ?: $batch['error']), 502, $batch);
+}
+
 $res    = $batch['result']['result']       ?? [];
 $resErr = $batch['result']['result_error']  ?? [];
 $newContactId = $res['contact'] ?? null;
@@ -126,11 +139,18 @@ $newDealId    = $res['deal']    ?? null;
 // Компенсация: контакт создан, но сделка упала → удаляем «висячий» контакт.
 if ($newContactId && !$newDealId) {
     b24('crm.contact.delete', ['id' => $newContactId]);
-    $why = $resErr['deal']['error_description'] ?? ($resErr['deal']['error'] ?? 'неизвестная ошибка');
-    fail('Сделка не создана, контакт откачен. Причина: ' . $why, 502);
+    $de  = $resErr['deal'] ?? [];
+    $why = $de['error_description'] ?: ($de['error'] ?? 'неизвестная ошибка');
+    fail('Сделка не создана, контакт откачен. Причина: ' . $why, 502, $batch);
 }
 if (!$newDealId) {
-    fail('Не удалось создать сделку: ' . json_encode($resErr, JSON_UNESCAPED_UNICODE), 502);
+    // Разбираем, что именно вернул Битрикс по каждой команде.
+    $parts = [];
+    foreach (['contact' => $resErr['contact'] ?? null, 'deal' => $resErr['deal'] ?? null] as $k => $e) {
+        if ($e) { $parts[] = "$k: " . ($e['error_description'] ?: ($e['error'] ?? '?')); }
+    }
+    $msg = $parts ? implode('; ', $parts) : 'Битрикс вернул пустой результат без ошибки (проверьте права вебхука и STAGE_ID/CATEGORY_ID)';
+    fail('Не удалось создать сделку: ' . $msg, 502, $batch);
 }
 
 ok([
@@ -154,7 +174,10 @@ function findDuplicateContact(string $email, string $phone): ?int {
     }
     if (!$cmd) { return null; }
 
-    $r   = b24('batch', ['halt' => 0, 'cmd' => $cmd]);
+    $r = b24('batch', ['halt' => 0, 'cmd' => $cmd]);
+    if (isset($r['error'])) { // напр. insufficient_scope — вебхук без права crm
+        fail('Проверка дублей отклонена: ' . ($r['error_description'] ?: $r['error']), 502, $r);
+    }
     $res = $r['result']['result'] ?? [];
     foreach (['byEmail', 'byPhone'] as $k) {
         $ids = $res[$k]['CONTACT'] ?? [];
@@ -190,4 +213,10 @@ function b24(string $method, array $params): array {
 }
 
 function ok(array $payload): void   { echo json_encode(['ok' => true]  + $payload, JSON_UNESCAPED_UNICODE); exit; }
-function fail(string $msg, int $c): void { http_response_code($c); echo json_encode(['ok' => false, 'error' => $msg], JSON_UNESCAPED_UNICODE); exit; }
+function fail(string $msg, int $c, ?array $raw = null): void {
+    http_response_code($c);
+    $out = ['ok' => false, 'error' => $msg];
+    if (DEBUG && $raw !== null) { $out['debug'] = $raw; }
+    echo json_encode($out, JSON_UNESCAPED_UNICODE);
+    exit;
+}

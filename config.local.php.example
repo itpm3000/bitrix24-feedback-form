@@ -1,0 +1,11 @@
+<?php
+/**
+ * Шаблон локального конфига. Скопируйте в config.local.php и впишите свой вебхук.
+ *   cp config.local.php.example config.local.php
+ *
+ * config.local.php добавлен в .gitignore и НЕ попадает в репозиторий.
+ */
+
+// Входящий вебхук Bitrix24 с правом scope=crm (со слэшем на конце или без — не важно):
+//   https://ВАШ-ПОРТАЛ.bitrix24.ru/rest/1/xxxxxxxxxxxxxxxx/
+const WEBHOOK = 'https://your-portal.bitrix24.ru/rest/1/PUT_YOUR_TOKEN_HERE/';
