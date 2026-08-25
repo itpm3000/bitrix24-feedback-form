@@ -19,16 +19,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
-          extensions: mbstring, dom
-          tools: composer
-
-      - name: Install PHP dependencies (Dompdf)
-        run: composer update --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-progress
-
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
