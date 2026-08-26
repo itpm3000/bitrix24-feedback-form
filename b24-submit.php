@@ -53,6 +53,7 @@ $lastName  = trim((string)($in['last_name']  ?? ''));
 $email     = trim((string)($in['email']      ?? ''));
 $phone     = trim((string)($in['phone']      ?? ''));
 $siteUser  = trim((string)($in['site_user_id'] ?? '')); // UF контакта: ID пользователя на сайте
+$telegram  = trim((string)($in['telegram']   ?? ''));   // аккаунт Telegram → мультиполе IM контакта
 $site      = trim((string)($in['site']       ?? ''));   // домен сайта-источника
 $message   = trim((string)($in['message']    ?? ''));
 
@@ -93,6 +94,7 @@ $contactFields = array_filter([
 ], fn($v) => $v !== '' && $v !== null);
 if ($email !== '') { $contactFields['EMAIL'] = [['VALUE' => $email, 'VALUE_TYPE' => 'WORK']]; }
 if ($phone !== '') { $contactFields['PHONE'] = [['VALUE' => $phone, 'VALUE_TYPE' => 'WORK']]; }
+if ($telegram !== '') { $contactFields['IM'] = [['VALUE' => $telegram, 'VALUE_TYPE' => 'TELEGRAM']]; }
 
 // ── Источник: короткая строка для SOURCE_DESCRIPTION и подробный блок в комментарий ──
 $sourceShort = trim(implode(' | ', array_filter([$site, $pageUrl]))); // компактно для поля «Источник»

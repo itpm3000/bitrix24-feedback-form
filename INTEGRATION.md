@@ -73,6 +73,7 @@ BASE = https://<portal>.bitrix24.ru/rest/<user_id>/<webhook_token>/
     "SOURCE_ID": "WEB",
     "EMAIL": [ { "VALUE": "ivan@example.com", "VALUE_TYPE": "WORK" } ],
     "PHONE": [ { "VALUE": "+79001234567", "VALUE_TYPE": "WORK" } ],
+    "IM": [ { "VALUE": "@ivan_petrov", "VALUE_TYPE": "TELEGRAM" } ],
     "UF_CRM_1786546554": "user-42"
   }
 }
@@ -167,7 +168,12 @@ BASE = https://<portal>.bitrix24.ru/rest/<user_id>/<webhook_token>/
 | `SECOND_NAME` | строка | отчество |
 | `EMAIL` | множественное `[{VALUE,VALUE_TYPE}]` | email |
 | `PHONE` | множественное `[{VALUE,VALUE_TYPE}]` | телефон |
+| `IM` | множественное `[{VALUE,VALUE_TYPE}]` | мессенджер (Telegram и др.) |
 | `UF_CRM_1786546554` | строка | ID пользователя на сайте обращения |
+
+> Отдельного поля под Telegram нет — аккаунт пишется в штатное мультиполе `IM`
+> с `VALUE_TYPE: "TELEGRAM"`. Другие типы: `SKYPE`, `VIBER`, `FACEBOOK`, `VK`, `INSTAGRAM`.
+> Пример: `"IM": [ { "VALUE": "@ivan_petrov", "VALUE_TYPE": "TELEGRAM" } ]`
 
 ### Поля сделки HelpDesk (пользовательские)
 
