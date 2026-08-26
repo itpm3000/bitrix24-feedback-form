@@ -21,7 +21,10 @@ if (!is_file($cfg)) {
     http_response_code(500);
     exit(json_encode(['ok' => false, 'error' => 'Нет config.local.php — скопируйте из config.local.php.example и впишите вебхук'], JSON_UNESCAPED_UNICODE));
 }
-require $cfg; // определяет константу WEBHOOK
+require $cfg; // определяет константу WEBHOOK (и, опционально, DEFAULT_ASSIGNED_BY_ID)
+
+// Ответственный из конфига: >0 — принудительно; 0/не задан — оставить на усмотрение Битрикса.
+$assignedBy = defined('DEFAULT_ASSIGNED_BY_ID') ? (int) DEFAULT_ASSIGNED_BY_ID : 0;
 
 const HELPDESK_CATEGORY_ID = 2;        // воронка HelpDesk
 const HELPDESK_STAGE_NEW   = 'C2:NEW'; // стартовая стадия «Новая»
@@ -57,6 +60,10 @@ $telegram  = trim((string)($in['telegram']   ?? ''));   // аккаунт Telegr
 $site      = trim((string)($in['site']       ?? ''));   // домен сайта-источника
 $message   = trim((string)($in['message']    ?? ''));
 
+// ID пользователя квалифицируем доменом сайта: «site-a.com:user-42» — чтобы ID с разных
+// сайтов не путались. Если сайт не передан — пишем ID как есть.
+$siteUserQualified = ($siteUser !== '' && $site !== '') ? "$site:$siteUser" : $siteUser;
+
 // ── Источник обращения ──
 $pageUrl   = trim((string)($in['page_url']  ?? '')); // точный URL страницы с формой
 $referrer  = trim((string)($in['referrer']  ?? '')); // откуда пользователь пришёл
@@ -90,7 +97,8 @@ $contactFields = array_filter([
     'OPENED'     => 'Y',
     'TYPE_ID'    => 'CLIENT',
     'SOURCE_ID'  => DEAL_SOURCE_ID,
-    'UF_CRM_1786546554' => $siteUser, // ID пользователя на сайте обращения
+    'ASSIGNED_BY_ID' => $assignedBy > 0 ? $assignedBy : null, // ответственный из конфига
+    'UF_CRM_1786546554' => $siteUserQualified, // ID пользователя на сайте (квалифицирован доменом)
 ], fn($v) => $v !== '' && $v !== null);
 if ($email !== '') { $contactFields['EMAIL'] = [['VALUE' => $email, 'VALUE_TYPE' => 'WORK']]; }
 if ($phone !== '') { $contactFields['PHONE'] = [['VALUE' => $phone, 'VALUE_TYPE' => 'WORK']]; }
@@ -117,6 +125,7 @@ $dealFields = array_filter([
     'TITLE'              => $title,
     'CATEGORY_ID'        => HELPDESK_CATEGORY_ID,
     'STAGE_ID'           => HELPDESK_STAGE_NEW,
+    'ASSIGNED_BY_ID'     => $assignedBy > 0 ? $assignedBy : null, // ответственный из конфига
     'SOURCE_ID'          => DEAL_SOURCE_ID,
     'SOURCE_DESCRIPTION' => $sourceShort,
     'COMMENTS'           => $comments,
@@ -131,7 +140,15 @@ $dealFields = array_filter([
 
 // ── Шаг 2. Создание ──
 if ($existingContactId) {
-    // Контакт уже есть — создаём только сделку. Орфанов быть не может.
+    // Контакт уже есть — дозаписываем в него данные из формы, затем создаём сделку.
+    // Обновляем только «обогащающие» поля; имя/email/телефон существующего не перетираем.
+    $enrich = array_filter([
+        'UF_CRM_1786546554' => $siteUserQualified, // ID пользователя на сайте (квалифицирован доменом)
+    ], fn($v) => $v !== '' && $v !== null);
+    if ($enrich) {
+        b24('crm.contact.update', ['id' => $existingContactId, 'fields' => $enrich]);
+    }
+
     $dealFields['CONTACT_ID'] = $existingContactId;
     $deal = b24('crm.deal.add', ['fields' => $dealFields]);
     if (isset($deal['error'])) { fail('Ошибка создания сделки: ' . ($deal['error_description'] ?? $deal['error']), 502); }

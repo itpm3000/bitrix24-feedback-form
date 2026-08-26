@@ -74,7 +74,7 @@ BASE = https://<portal>.bitrix24.ru/rest/<user_id>/<webhook_token>/
     "EMAIL": [ { "VALUE": "ivan@example.com", "VALUE_TYPE": "WORK" } ],
     "PHONE": [ { "VALUE": "+79001234567", "VALUE_TYPE": "WORK" } ],
     "IM": [ { "VALUE": "@ivan_petrov", "VALUE_TYPE": "TELEGRAM" } ],
-    "UF_CRM_1786546554": "user-42"
+    "UF_CRM_1786546554": "site-a.com:user-42"
   }
 }
 ```
@@ -93,6 +93,7 @@ BASE = https://<portal>.bitrix24.ru/rest/<user_id>/<webhook_token>/
     "CATEGORY_ID": 2,
     "STAGE_ID": "C2:NEW",
     "CONTACT_ID": 123,
+    "ASSIGNED_BY_ID": 22,
     "SOURCE_ID": "WEB",
     "SOURCE_DESCRIPTION": "site-a.com | https://site-a.com/contacts",
     "COMMENTS": "Текст обращения + сводка по источнику",
@@ -158,6 +159,11 @@ BASE = https://<portal>.bitrix24.ru/rest/<user_id>/<webhook_token>/
 | `CATEGORY_ID` | `2` | воронка HelpDesk |
 | `STAGE_ID` | `C2:NEW` | стартовая стадия «Новая» |
 | `SOURCE_ID` | `WEB` | источник «Веб-сайт» |
+| `ASSIGNED_BY_ID` | ID пользователя | ответственный; если не передавать — назначится владелец вебхука |
+
+> **Ответственный** передаётся из бэкенда полем `ASSIGNED_BY_ID` (ID пользователя портала) —
+> его нет в форме, значение задаётся в настройках прокси. Если поле не слать, ответственным
+> станет владелец вебхука. Применяется и к контакту, и к сделке.
 
 ### Поля контакта
 
@@ -169,7 +175,7 @@ BASE = https://<portal>.bitrix24.ru/rest/<user_id>/<webhook_token>/
 | `EMAIL` | множественное `[{VALUE,VALUE_TYPE}]` | email |
 | `PHONE` | множественное `[{VALUE,VALUE_TYPE}]` | телефон |
 | `IM` | множественное `[{VALUE,VALUE_TYPE}]` | мессенджер (Telegram и др.) |
-| `UF_CRM_1786546554` | строка | ID пользователя на сайте обращения |
+| `UF_CRM_1786546554` | строка | ID пользователя на сайте обращения, квалифицированный доменом: `<домен>:<id>` |
 
 > Отдельного поля под Telegram нет — аккаунт пишется в штатное мультиполе `IM`
 > с `VALUE_TYPE: "TELEGRAM"`. Другие типы: `SKYPE`, `VIBER`, `FACEBOOK`, `VK`, `INSTAGRAM`.

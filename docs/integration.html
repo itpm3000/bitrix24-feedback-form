@@ -230,7 +230,7 @@
     <span class="tok-key">"EMAIL"</span>: <span class="tok-punc">[{</span> <span class="tok-key">"VALUE"</span>: <span class="tok-str">"ivan@example.com"</span>, <span class="tok-key">"VALUE_TYPE"</span>: <span class="tok-str">"WORK"</span> <span class="tok-punc">}]</span>,
     <span class="tok-key">"PHONE"</span>: <span class="tok-punc">[{</span> <span class="tok-key">"VALUE"</span>: <span class="tok-str">"+79001234567"</span>, <span class="tok-key">"VALUE_TYPE"</span>: <span class="tok-str">"WORK"</span> <span class="tok-punc">}]</span>,
     <span class="tok-key">"IM"</span>: <span class="tok-punc">[{</span> <span class="tok-key">"VALUE"</span>: <span class="tok-str">"@ivan_petrov"</span>, <span class="tok-key">"VALUE_TYPE"</span>: <span class="tok-str">"TELEGRAM"</span> <span class="tok-punc">}]</span>,
-    <span class="tok-key">"UF_CRM_1786546554"</span>: <span class="tok-str">"user-42"</span>
+    <span class="tok-key">"UF_CRM_1786546554"</span>: <span class="tok-str">"site-a.com:user-42"</span>
   <span class="tok-punc">}</span>
 <span class="tok-punc">}</span></pre>
       </div>
@@ -250,6 +250,7 @@
     <span class="tok-key">"CATEGORY_ID"</span>: <span class="tok-num">2</span>,
     <span class="tok-key">"STAGE_ID"</span>: <span class="tok-str">"C2:NEW"</span>,
     <span class="tok-key">"CONTACT_ID"</span>: <span class="tok-num">123</span>,
+    <span class="tok-key">"ASSIGNED_BY_ID"</span>: <span class="tok-num">22</span>,
     <span class="tok-key">"SOURCE_ID"</span>: <span class="tok-str">"WEB"</span>,
     <span class="tok-key">"SOURCE_DESCRIPTION"</span>: <span class="tok-str">"site-a.com | https://site-a.com/contacts"</span>,
     <span class="tok-key">"COMMENTS"</span>: <span class="tok-str">"Текст обращения + сводка по источнику"</span>,
@@ -310,6 +311,7 @@
           <tr><td><code>CATEGORY_ID</code></td><td class="id">2</td><td>воронка HelpDesk</td></tr>
           <tr><td><code>STAGE_ID</code></td><td><code>C2:NEW</code></td><td>стартовая стадия «Новая»</td></tr>
           <tr><td><code>SOURCE_ID</code></td><td><code>WEB</code></td><td>источник «Веб-сайт»</td></tr>
+          <tr><td><code>ASSIGNED_BY_ID</code></td><td>ID юзера</td><td>ответственный; без него — владелец вебхука</td></tr>
         </tbody>
       </table></div>
 
@@ -323,7 +325,7 @@
           <tr><td><code>EMAIL</code></td><td>множ. <code>[{VALUE,VALUE_TYPE}]</code></td><td>email</td></tr>
           <tr><td><code>PHONE</code></td><td>множ. <code>[{VALUE,VALUE_TYPE}]</code></td><td>телефон</td></tr>
           <tr><td><code>IM</code></td><td>множ. <code>[{VALUE,VALUE_TYPE}]</code></td><td>мессенджер — Telegram и др.</td></tr>
-          <tr><td><code>UF_CRM_1786546554</code></td><td>строка</td><td>ID пользователя на сайте обращения</td></tr>
+          <tr><td><code>UF_CRM_1786546554</code></td><td>строка</td><td>ID пользователя на сайте, квалифицированный доменом: <code>&lt;домен&gt;:&lt;id&gt;</code></td></tr>
         </tbody>
       </table></div>
 
